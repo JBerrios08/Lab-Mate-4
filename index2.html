@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Curvas de Nivel - Demo</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <style>
+    :root { --bg:#0f172a; --card:#111827; --border:#1f2937; --muted:#94a3b8; --ink:#e2e8f0; }
+    body { background: var(--bg); color: var(--ink); }
+    .card { background: var(--card); border: 1px solid var(--border); }
+    .form-text { color: var(--muted); }
+    canvas { background: #0b1220; border-radius: .5rem; width: 100%; height: auto; }
+    .btn-icon { display:inline-flex; gap:.5rem; align-items:center; }
+    .legend { display:flex; flex-wrap:wrap; gap:.5rem; }
+    .legend .item{ display:inline-flex; align-items:center; gap:.35rem; padding:.2rem .5rem; border:1px solid var(--border); border-radius:999px; font-size:.85rem; color:var(--muted); }
+    .dot{ width:12px; height:12px; border-radius:50%; display:inline-block; }
+    .footer-note{ font-size:.85rem; color:var(--muted); }
+  </style>
+</head>
+<body>
+  <div class="container py-4">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+      <h1 class="h3 m-0">Curvas de Nivel</h1>
+      <div class="d-flex gap-2">
+        <button id="btnEjemplo" class="btn btn-outline-info btn-sm btn-icon" type="button" title="Cargar ejemplo">🔁 <span>Ejemplo</span></button>
+        <button id="btnLimpiar" class="btn btn-outline-secondary btn-sm btn-icon" type="button" title="Limpiar">🧹 <span>Limpiar</span></button>
+        <button id="btnDescargar" class="btn btn-outline-success btn-sm btn-icon" type="button" title="Descargar PNG">⬇️ <span>PNG</span></button>
+      </div>
+    </div>
+
+    <div class="row g-3">
+      <div class="col-12 col-lg-5">
+        <div class="card p-3 h-100">
+          <form id="formCurvas" class="vstack gap-3">
+            <div>
+              <label for="expr" class="form-label">Función f(x, y)</label>
+              <input id="expr" class="form-control form-control-sm" placeholder="Ej: 10 - 4*x - y" />
+              <div class="form-text">Admite + - * / ^, paréntesis y funciones: sin, cos, tan, atan, asin, acos, exp, log, abs, sqrt. Constantes: PI, E. Usa x e y como variables.</div>
+            </div>
+
+            <div class="row g-2">
+              <div class="col">
+                <label class="form-label">x min</label>
+                <input id="xmin" type="number" step="any" class="form-control form-control-sm" />
+              </div>
+              <div class="col">
+                <label class="form-label">x max</label>
+                <input id="xmax" type="number" step="any" class="form-control form-control-sm" />
+              </div>
+            </div>
+            <div class="row g-2">
+              <div class="col">
+                <label class="form-label">y min</label>
+                <input id="ymin" type="number" step="any" class="form-control form-control-sm" />
+              </div>
+              <div class="col">
+                <label class="form-label">y max</label>
+                <input id="ymax" type="number" step="any" class="form-control form-control-sm" />
+              </div>
+            </div>
+
+            <div class="row g-2 align-items-end">
+              <div class="col">
+                <label class="form-label">Resolución (cuadrícula)</label>
+                <input id="res" type="number" min="20" max="400" step="1" class="form-control form-control-sm" />
+                <div class="form-text">Más alto = mayor detalle (y más lento). Recomendado: 120–200.</div>
+              </div>
+              <div class="col">
+                <label class="form-label">Grosor línea</label>
+                <input id="stroke" type="number" min="1" max="4" step="1" class="form-control form-control-sm" />
+              </div>
+            </div>
+
+            <div>
+              <label class="form-label">Niveles</label>
+              <div class="form-check">
+                <input class="form-check-input" type="radio" name="levelMode" id="modeAuto" value="auto" checked>
+                <label class="form-check-label" for="modeAuto">Automático (min→max) con <span class="d-inline-block"><input id="nlevels" type="number" min="1" max="30" step="1" value="6" class="form-control form-control-sm d-inline-block" style="width:70px" /></span> niveles</label>
+              </div>
+              <div class="form-check mt-1">
+                <input class="form-check-input" type="radio" name="levelMode" id="modeManual" value="manual">
+                <label class="form-check-label" for="modeManual">Lista manual (separa por coma)</label>
+              </div>
+              <input id="levelsList" class="form-control form-control-sm mt-1" placeholder="Ej: -6,-3,0,3,6" disabled />
+            </div>
+
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" role="switch" id="showAxes" checked>
+              <label class="form-check-label" for="showAxes">Mostrar ejes y grilla</label>
+            </div>
+
+            <button id="btnDibujar" type="submit" class="btn btn-primary btn-icon">🎯 <span>Dibujar curvas</span></button>
+          </form>
+        </div>
+      </div>
+
+      <div class="col-12 col-lg-7">
+        <div class="card p-3 mb-3">
+          <canvas id="canvas" width="900" height="650" aria-label="Lienzo de curvas de nivel" role="img"></canvas>
+        </div>
+        <div class="card p-3">
+          <div class="legend" id="legend"></div>
+          <div class="footer-note mt-2">Sugerencia: prueba <code>sin(x) * cos(y)</code>, <code>x^2 + y^2</code>, <code>10 - 4*x - y</code>.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Utilidad: evaluador "seguro" (acceso a Math, x, y). No usar con entrada maliciosa.
+    function buildEvaluator(expr) {
+      const src = expr.replace(/\^/g, '**');
+      const fn = new Function('x','y', `with (Math) { return (${src}); }`);
+      return (x,y) => {
+        const v = fn(x,y);
+        if (!Number.isFinite(v)) return NaN;
+        return v;
+      };
+    }
+
+    function levelColor(i, n){
+      const h = (i / Math.max(1,n)) * 300; // 0..300
+      return `hsl(${h} 90% 60%)`;
+    }
+
+    // Marching Squares básico
+    function marchingSquares(field, xs, ys, levels){
+      const ny = field.length, nx = field[0].length;
+      const results = levels.map(() => []);
+
+      function interp(x1,y1,v1, x2,y2,v2, level){
+        const t = (level - v1) / (v2 - v1);
+        return [x1 + t*(x2-x1), y1 + t*(y2-y1)];
+      }
+
+      for (let j=0; j<ny-1; j++){
+        for (let i=0; i<nx-1; i++){
+          const xL = xs[i], xR = xs[i+1];
+          const yT = ys[j], yB = ys[j+1];
+          const vTL = field[j][i];
+          const vTR = field[j][i+1];
+          const vBL = field[j+1][i];
+          const vBR = field[j+1][i+1];
+
+          for (let li=0; li<levels.length; li++){
+            const k = levels[li];
+            let idx = 0;
+            if (vTL > k) idx |= 1;
+            if (vTR > k) idx |= 2;
+            if (vBR > k) idx |= 4;
+            if (vBL > k) idx |= 8;
+            if (idx === 0 || idx === 15) continue;
+
+            let pts = [];
+            if ((idx & 1) !== (idx & 2)) pts.push(interp(xL,yT,vTL, xR,yT,vTR, k)); // top
+            if ((idx & 2) !== (idx & 4)) pts.push(interp(xR,yT,vTR, xR,yB,vBR, k)); // right
+            if ((idx & 4) !== (idx & 8)) pts.push(interp(xR,yB,vBR, xL,yB,vBL, k)); // bottom
+            if ((idx & 8) !== (idx & 1)) pts.push(interp(xL,yB,vBL, xL,yT,vTL, k)); // left
+
+            if (pts.length === 2){
+              results[li].push([pts[0][0], pts[0][1], pts[1][0], pts[1][1]]);
+            } else if (pts.length === 4){
+              results[li].push([pts[0][0], pts[0][1], pts[1][0], pts[1][1]]);
+              results[li].push([pts[2][0], pts[2][1], pts[3][0], pts[3][1]]);
+            }
+          }
+        }
+      }
+      return results;
+    }
+
+    function drawContours(ctx, canvas, segmentsByLevel, levels, bounds, showAxes, stroke){
+      const {xmin,xmax,ymin,ymax} = bounds;
+      const W = canvas.width, H = canvas.height;
+      const sx = x => ( (x - xmin) / (xmax - xmin) ) * (W-60) + 30; // márgenes
+      const sy = y => H - ( (y - ymin) / (ymax - ymin) ) * (H-60) - 30;
+
+      ctx.fillStyle = '#0b1220';
+      ctx.fillRect(0,0,W,H);
+
+      if (showAxes){
+        ctx.strokeStyle = '#1f2a44';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([4,6]);
+        const gx = 10, gy = 10;
+        for (let i=0; i<=gx; i++){
+          const x = xmin + i*(xmax-xmin)/gx;
+          const X = sx(x);
+          ctx.beginPath(); ctx.moveTo(X, 15); ctx.lineTo(X, H-15); ctx.stroke();
+        }
+        for (let j=0; j<=gy; j++){
+          const y = ymin + j*(ymax-ymin)/gy;
+          const Y = sy(y);
+          ctx.beginPath(); ctx.moveTo(15, Y); ctx.lineTo(W-15, Y); ctx.stroke();
+        }
+        ctx.setLineDash([]);
+
+        ctx.strokeStyle = '#334155';
+        ctx.lineWidth = 1.5;
+        if (xmin < 0 && xmax > 0){
+          ctx.beginPath(); ctx.moveTo(sx(0), 15); ctx.lineTo(sx(0), H-15); ctx.stroke();
+        }
+        if (ymin < 0 && ymax > 0){
+          ctx.beginPath(); ctx.moveTo(15, sy(0)); ctx.lineTo(W-15, sy(0)); ctx.stroke();
+        }
+
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = '12px system-ui, -apple-system, Segoe UI, Roboto';
+        ctx.fillText(`${xmin.toFixed(2)}`, 30, H-12);
+        ctx.fillText(`${xmax.toFixed(2)}`, W-60, H-12);
+        ctx.fillText(`${ymin.toFixed(2)}`, 6, H-30);
+        ctx.fillText(`${ymax.toFixed(2)}`, 6, 20);
+      }
+
+      ctx.lineWidth = stroke;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+
+      segmentsByLevel.forEach((segs, i) =>{
+        ctx.strokeStyle = levelColor(i, segmentsByLevel.length);
+        segs.forEach(s =>{
+          const [x1,y1,x2,y2] = s;
+          ctx.beginPath();
+          ctx.moveTo(sx(x1), sy(y1));
+          ctx.lineTo(sx(x2), sy(y2));
+          ctx.stroke();
+        });
+      });
+
+      ctx.strokeStyle = '#1f2937';
+      ctx.strokeRect(10,10,W-20,H-20);
+    }
+
+    function buildField(fn, xmin,xmax,ymin,ymax, res){
+      const nx = res, ny = res;
+      const xs = Array.from({length:nx}, (_,i)=> xmin + (i*(xmax-xmin))/(nx-1));
+      const ys = Array.from({length:ny}, (_,j)=> ymin + (j*(ymax-ymin))/(ny-1));
+      const field = ys.map(()=> Array(nx));
+
+      let vmin= Infinity, vmax = -Infinity;
+      for (let j=0; j<ny; j++){
+        for (let i=0; i<nx; i++){
+          const v = fn(xs[i], ys[j]);
+          field[j][i] = v;
+          if (Number.isFinite(v)){
+            if (v < vmin) vmin = v;
+            if (v > vmax) vmax = v;
+          }
+        }
+      }
+      return {field, xs, ys, vmin, vmax};
+    }
+
+    const expr = document.getElementById('expr');
+    const xmin = document.getElementById('xmin');
+    const xmax = document.getElementById('xmax');
+    const ymin = document.getElementById('ymin');
+    const ymax = document.getElementById('ymax');
+    const res = document.getElementById('res');
+    const stroke = document.getElementById('stroke');
+    const nlevels = document.getElementById('nlevels');
+    const modeAuto = document.getElementById('modeAuto');
+    const modeManual = document.getElementById('modeManual');
+    const levelsList = document.getElementById('levelsList');
+    const showAxes = document.getElementById('showAxes');
+
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const legend = document.getElementById('legend');
+
+    function cargarEjemplo(){
+      expr.value = '10 - 4*x - y';
+      xmin.value = -5; xmax.value = 5; ymin.value = -5; ymax.value = 5;
+      res.value = 150; stroke.value = 2; nlevels.value = 6;
+      modeAuto.checked = true; levelsList.value = ''; levelsList.disabled = true;
+      showAxes.checked = true;
+    }
+    cargarEjemplo();
+
+    modeAuto.addEventListener('change', ()=>{ levelsList.disabled = true; });
+    modeManual.addEventListener('change', ()=>{ levelsList.disabled = false; levelsList.focus(); });
+
+    document.getElementById('btnEjemplo').addEventListener('click', cargarEjemplo);
+    document.getElementById('btnLimpiar').addEventListener('click', ()=>{ ctx.clearRect(0,0,canvas.width,canvas.height); legend.innerHTML = ''; });
+    document.getElementById('btnDescargar').addEventListener('click', ()=>{ const a = document.createElement('a'); a.download = 'curvas_de_nivel.png'; a.href = canvas.toDataURL('image/png'); a.click(); });
+
+    document.getElementById('formCurvas').addEventListener('submit', (e)=>{
+      e.preventDefault();
+      try{
+        const fn = buildEvaluator(expr.value.trim());
+        const bx = {
+          xmin: parseFloat(xmin.value), xmax: parseFloat(xmax.value),
+          ymin: parseFloat(ymin.value), ymax: parseFloat(ymax.value)
+        };
+        if (!(isFinite(bx.xmin)&&isFinite(bx.xmax)&&isFinite(bx.ymin)&&isFinite(bx.ymax))){ alert('Rangos inválidos.'); return; }
+        const R = Math.min(Math.max(parseInt(res.value,10)||120, 20), 400);
+        const S = Math.min(Math.max(parseInt(stroke.value,10)||2, 1), 4);
+
+        const {field, xs, ys, vmin, vmax} = buildField(fn, bx.xmin,bx.xmax,bx.ymin,bx.ymax, R);
+
+        let levels = [];
+        if (modeAuto.checked){
+          const n = Math.min(Math.max(parseInt(nlevels.value,10)||6, 1), 30);
+          const a = vmin, b = vmax;
+          if (!isFinite(a) || !isFinite(b) || a===b){ alert('No se pudieron calcular niveles automáticos. Prueba otra función o rango.'); return; }
+          const step = (b-a) / (n+1);
+          for (let i=1; i<=n; i++) levels.push(a + i*step);
+        } else {
+          levels = levelsList.value.split(',').map(s=>parseFloat(s.trim())).filter(v=>Number.isFinite(v));
+          if (levels.length === 0){ alert('Ingresa niveles válidos separados por coma.'); return; }
+        }
+
+        const segmentsByLevel = marchingSquares(field, xs, ys, levels);
+        drawContours(ctx, canvas, segmentsByLevel, levels, bx, showAxes.checked, S);
+
+        legend.innerHTML = '';
+        levels.forEach((k,i)=>{
+          const div = document.createElement('div');
+          div.className = 'item';
+          const dot = document.createElement('span'); dot.className='dot'; dot.style.background = levelColor(i, levels.length);
+          div.appendChild(dot);
+          const label = document.createElement('span'); label.textContent = `k = ${Number(k.toFixed(4))}`;
+          div.appendChild(label);
+          legend.appendChild(div);
+        });
+      } catch(err){
+        console.error(err);
+        alert('Ocurrió un error al evaluar o dibujar. Revisa la expresión y los parámetros.');
+      }
+    });
+  </script>
+</body>
+</html>
